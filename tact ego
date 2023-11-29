@@ -1,0 +1,177 @@
+"""
+File Name: project2.py
+Author Name: Pahal Raval
+Section: 44
+Email: pahalr1@umbc.edu
+Description:
+
+"""
+
+import random
+
+def tactego(pieces_file, length, width):
+    # Load the pieces from the file
+    pieces = []
+    with open(pieces_file, 'r') as f:
+        for line in f:
+            piece_type, count = line.strip().split(' ')
+            count = int(count)
+            for _ in range(count):
+                pieces.append(piece_type)
+
+    # Create the board
+    board = [[None for _ in range(width)] for _ in range(length)]
+
+
+    # Place the pieces on the board
+    place_pieces(board, pieces, length, width)
+
+    # Game loop
+    current_player = 1
+    while True:
+        # Display the board
+        print_board(board)
+
+        # Get the player's move
+        starting_position = get_position("Select Piece to Move by Position >> ")
+        ending_position = get_position("Select Position to move Piece >> ")
+
+        # Validate the move
+        if not is_valid_move(board, current_player, starting_position, ending_position):
+            continue
+
+        # Make the move
+        move_piece(board, starting_position, ending_position)
+
+        # Check for victory
+        if has_won(board, current_player):
+            break
+
+        # Switch players
+        current_player = 3 - current_player
+
+    # Display the winner
+    print(f"Player {current_player} has won the game!")
+
+def place_pieces(board, pieces, length, width):
+    # Shuffle the pieces
+    random.shuffle(pieces)
+
+    # Place the red pieces on the top of the board
+    for i in range(length):
+        board[0][i] = f'R{i + 1}'
+
+    # Place the blue pieces on the bottom of the board
+    for i in range(length):
+        board[length - 1][i] = f'B{i + 1}'
+
+    # Place the pieces on the board
+    player1_pieces = pieces[:len(pieces) // 2]
+    player2_pieces = pieces[len(pieces) // 2:]
+    for i, piece in enumerate(player1_pieces):
+        board[i // width][i % width] = piece
+    for i, piece in enumerate(player2_pieces):
+        board[(length - 1) - (i // width)][(width - 1) - (i % width)] = piece
+
+
+def print_board(board):
+    for row in board:
+        print(' '.join(row))
+
+def get_position(prompt):
+    while True:
+        position = input(prompt)
+        if not position or len(position) != 2 or not position.isnumeric():
+            print("Invalid position. Please enter two coordinates separated by a space.")
+            continue
+        x, y = int(position[0]), int(position[1])
+        if x < 0 or x >= len(board) or y < 0 or y >= len(board[0]):
+            print("Invalid position. Please enter coordinates within the range of the board.")
+            continue
+        return x, y
+
+def is_valid_move(board, player, starting_position, ending_position):
+    x1, y1 = starting_position
+    x2, y2 = ending_position
+
+    # Check that the starting position is valid
+    if board[x1][y1] is None or board[x1][y1].startswith('F'):
+        print("Invalid starting position. Please select one of your pieces.")
+        return False
+
+    # Check that the ending position is valid
+    if board[x2][y2] is None:
+        return True
+    if board[x2][y2].startswith('F'):
+        print("Invalid ending position. Please do not try to capture flags.")
+        return False
+    if board[x1][y1].startswith('F') or board[x2][y2].startswith('F'):
+        print("Invalid move. Please do not attack flags.")
+        return False
+
+    # Check that the move is within one space
+    if abs(x1 - x2) > 1 or abs(y1 - y2) > 1:
+        print("Invalid move. Please move your piece to an adjacent square.")
+        return False
+
+    # Check that the move is not diagonal
+    if x1 != x2 and y1 != y2:
+        print("Invalid move. Please move your piece in a straight line.")
+        return False
+
+    # Check that the move is not self-attacking
+    if x1 == x2 and y1 == y2:
+        print("Invalid move. Please do not attack yourself.")
+        return False
+
+    # Check that the move is not attacking a piece of the same player
+    if board[x1][y1] == board[x2][y2]:
+        print("Invalid move. Please do not attack your own pieces.")
+        return False
+
+    return True
+
+def move_piece(board, starting_position, ending_position):
+    x1, y1 = starting_position
+    x2, y2 = ending_position
+
+    # Move the piece
+    board[x2][y2] = board[x1][y1]
+    board[x1][y1] = None
+
+    # Combat
+    if board[x2][y2].startswith('A'):
+        # Assassin defeats any piece
+        board[x2][y2] = None
+    elif board[x2][y2].startswith('S'):
+        # Sapper is defeated by any piece
+        board[x2][y2] = None
+    elif board[x2][y2].startswith('M'):
+        # Mine defeats any piece but is then removed
+        board[x2][y2] = None
+    else:
+        # Regular combat rules
+        piece1_strength = int(board[x1][y1][1:])
+        piece2_strength = int(board[x2][y2][1:])
+        if piece1_strength > piece2_strength:
+            board[x2][y2] = board[x1][y1]
+        elif piece1_strength < piece2_strength:
+            board[x2][y2] = None
+        else:
+            # Tie, both pieces are removed
+            board[x2][y2] = None
+
+def has_won(board, player):
+    # Check if the other player has any flags left
+    for row in board:
+        for piece in row:
+            if piece and piece.startswith('F') and piece.endswith(str(3 - player)):
+                return False
+    return True
+
+if __name__ == '__main__':
+    random.seed(input('What is the seed? '))
+    file_name = input('What is the filename for the pieces? ')
+    length = int(input('What is the length? '))
+    width = int(input('What is the width? '))
+    tactego(file_name, length, width)
